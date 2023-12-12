@@ -1,0 +1,207 @@
+Commands to run Oozie workflow
+
+1. Copied  input data files to hdfs
+#  hdfs fs -put /usr/fda
+
+2. Created a folder in VM  under /home/ubuntu like below
+
+project
+
+-         job.properties
+-         workflow.xml
+          Schedule.jar
+          TaxiTimeInOut.jar
+	  CancelledReason.jar
+
+			
+
+2. copied the above folder hdfs 
+ hdfs fs -put project
+
+3. cd /home/ubuntu/project
+ 
+4. Ran oozie:
+ oozie job -oozie http://localhost:11000/oozie -config job.properties -run
+
+5. Used the web url to check oozie job status:
+http://ec2-34-237-203-52.compute-1.amazonaws.com:11000/oozie/
+
+ 
+
+Steps to install Apache oozie:
+ 
+1. download oozie
+
+
+wget http://archive.apache.org/dist/oozie/5.2.1/oozie-5.2.1.tar.gz
+
+2. tar -xzvf oozie-5.2.1.tar.gz
+
+
+3. ls //oozie-5.2.1 would have been created
+
+4. cd oozie-5.2.1
+
+
+#maven installation:
+5.
+sudo apt-get install maven
+
+6. edit pom.xml
+
+        <targetJavaVersion>1.8</targetJavaVersion>
+
+and hadoop version to 3.3.2
+
+7.  mvn clean package assembly:single -P hadoop-2 -DskipTests
+
+8. cd /home/ubuntu/oozie/oozie-5.2.1/distro/target/oozie-5.2.1-distro
+
+here folder oozie-5.2.1 is what we want ..dsitro got created from step 7
+
+9. Created Oozie in /home/ubuntu/
+cd /home/ubuntu/
+sudo chmod -R 777 Oozie # IMP for full permission else some things wont work
+
+9. sudo cp -rf /home/ubuntu/oozie/oozie-5.2.1/distro/target/oozie-5.2.1-distro/ /home/ubuntu/Oozie/
+
+10. cd /home/ubuntu/oozie/distro/target/oozie-5.2.1-distro/oozie-5.2.1
+
+11. sudo mkdir libext
+
+12. cd oozie-5.2.0/distro/target/oozie-5.2.0-distro
+    mv oozie-5.2.0 /usr/local/oozie
+
+
+ sudo cp -R /home/ubuntu/hadoop/share/hadoop/*/*/.jar  /home/ubuntu/oozie/distro/target/oozie-5.2.1-distro/oozie-5.2.1/libext
+
+13.  cd /home/ubuntu/Oozie/oozie-5.2.1
+curl -O http://archive.cloudera.com/gplextras/misc/ext-2.2.zip
+
+14.
+ home/ubuntu/Oozie/oozie-5.2.1 > sudo apt-get install zip
+home/ubuntu/Oozie/oozie-5.2.1 >./bin/oozie-setup.sh prepare-war
+#you will get oozie ready to start
+
+
+15. in hadoop folder
+
+/home/ubuntu/hadoop-3.3.2/etc/hadoop
+
+in  core-site.xml
+
+
+<property> 
+         <name>fs.default.name</name> 
+         <value>hdfs://ec2-34-237-203-52.compute-1.amazonaws.com:9000</value> 
+     </property> 
+  <property> 
+    <name>hadoop.proxyuser.ubuntu.hosts</name> 
+    <value>ec2-34-237-203-52.compute-1.amazonaws.com</value> 
+  </property> 
+  <property> 
+    <name>hadoop.proxyuser.ubuntu.groups</name> 
+    <value>ubuntu</value> 
+  </property> 
+
+
+16. went to /home/ubuntu/Oozie/oozie-5.2.1/conf
+
+edited oozie-site.xml under oozie.service.HadoopAccessorService.hadoop.configuration
+
+<property>
+	<name>oozie.service.JPAservice.jdbc.driver</name>
+	<value>com.mysql.cj.jdbc.driver</value>
+</property>
+<property>
+	<name>oozie.service.JPAservice.jdbc.url</name>
+	<value>jdbc:mysql://localhost:3306/oozie</value>
+</property>
+<property>
+	<name>oozie.service.JPAservice.jdbc.username</name>
+	<value>oozie</value>
+</property>
+<property>
+	<name>oozie.service.JPAservice.jdbc.password</name>
+	<value>mysql</value>
+</property>
+<property>
+	<name>oozie.service.HadoopAccessorService.hadoop.configurations</name>
+	<value>*=/home/ubuntu/hadoop/etc/hadoop</value>
+</property>
+<property>
+	<name>oozie.service.WorkflowAppService.system.libpath</name>
+	<value>hdfs://dragon-4:9000/user/ubuntu/share/lib</value>
+</property>
+<property>
+	<name>oozie.service.HadoopAccessorService.WorkflowDefinitionMaxLength</name>
+	<value>100000000</value>
+</property>
+
+
+
+
+
+
+
+under oozie.service.workflowAppservice.system.libpath
+replace value
+<value>/user/${user.name}/share/lib</value>
+
+as
+<value>hdfs://ec2-34-237-203-52.compute-1.amazonaws.com:9000/user/${user.name}/share/lib</value>
+
+17. changed mapred-site.xml in hadoop folder
+ <configuration>
+ <property>
+  <name>mapreduce.framework.name</name>
+   <value>yarn</value>
+ </property>
+
+<property>
+   <name>mapred.job.tracker</name>
+      <value>localhost:8032</value>
+      </property>
+</configuration>
+
+18. Creating Sharelib directory in HDFS
+
+Note: Made sure that all your hadoop daemons are started properly.
+
+Move to > cd /home/ubuntu/Oozie/oozie-5.2.1/bin
+
+Now created a file in hdfs for storing the oozie contents with name sharelib using the below command:
+
+./oozie-setup.sh sharelib create -fs hdfs://ec2-34-237-203-52.compute-1.amazonaws.com:9000
+The above command will create a folder with name sharelib in HDFS.
+
+You will get a message as follows:
+
+the destination path for sharelib is: hdfs://ec2-34-237-203-52.compute-1.amazonaws.com:9000/user/ubuntu/share/lib/lib_20171204014351
+
+19. Creating Oozie Database
+[/home/ubuntu/Oozie/oozie-5.2.1/bin]$ ./bin/ooziedb.sh create -sqlfile oozie.sql -run
+
+#Oozie DB has been created for Oozie version '5.2.1'
+
+
+With this step, my oozie installation is completed
+
+20. Now exported the newly created oozie’s bin path into my .bashrc file from my home folder by using the below command
+ vim ~/.bashrc
+
+#set oozie home
+export OOZIE_VERSION=5.2.1
+export OOZIE_HOME=/usr/local/oozie
+export PATH=$OOZIE_HOME/bin:$PATH
+
+
+22.source ~/.bashrc
+
+23. started hsitory server also 
+locate mr-jobhistory-daemon.sh
+ ./mr-jobhistory-daemon.sh start historyserver
+
+24. cd /home/ubuntu/Oozie/oozie-5.2.1/bin
+./oozie-start.sh
+
